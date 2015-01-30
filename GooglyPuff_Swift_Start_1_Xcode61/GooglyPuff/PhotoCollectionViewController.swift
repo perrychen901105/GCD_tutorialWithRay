@@ -57,6 +57,9 @@ class PhotoCollectionViewController: UICollectionViewController
       nc.removeObserver(addedContentObserver)
     }
   }
+  
+  
+  
 }
 
 // MARK: - UICollectionViewDataSource
@@ -214,6 +217,21 @@ private extension PhotoCollectionViewController {
 
   func showOrHideNavPrompt() {
     // Implement me!
+    let delayInSeconds = 1.0
+    /// declare the variable that specifies the amount of time to delay.
+    let popTime = dispatch_time(DISPATCH_TIME_NOW, Int64(delayInSeconds * Double(NSEC_PER_SEC))) // 1
+    
+    /**
+    *  wait for the amount of time given in the delayInSeconds variable and then asynchronously add the closure to the main queue.
+    */
+    dispatch_after(popTime, GlobalMainQueue) { () -> Void in
+      let count = PhotoManager.sharedManager.photos.count
+      if count > 0 {
+        self.navigationItem.prompt = nil
+      } else {
+        self.navigationItem.prompt = "Add photos with faces to Googlyify them!"
+      }
+    }
   }
 
   func downloadImageAssets() {

@@ -30,6 +30,22 @@ class PhotoDetailViewController: UIViewController {
       photoImageView.contentMode = .Center
     }
 
+    dispatch_async(GlobalUserInteractiveQueue, { () -> Void in
+      // 1
+      /// move the work off of the main thread and onto a global queue, the closure is submitted asynchronously meaning that the execution of the calling thread continues. This lets viewDidLoad finish earlier on the main thread and makes the loading feel more snappy. Meanwhile, the face detection processing is started and will finish at some later time.
+      let overlayImage = self.faceOverlayImageFromImage(self.image)
+      // 2
+      /**
+      *  the face detection processing is complete and you've generated a new image. Since you want to use this new image to update your UIImageView, you add a new closure to the main queue. Remember - you must always access UIKit classes on the main thread!
+      */
+      dispatch_async(dispatch_get_main_queue(), { () -> Void in
+        // 3
+        /// Update UI
+        self.fadeInNewImage(overlayImage)
+      })
+      
+    })
+    
     let overlayImage = faceOverlayImageFromImage(image)
     fadeInNewImage(overlayImage)
   }
