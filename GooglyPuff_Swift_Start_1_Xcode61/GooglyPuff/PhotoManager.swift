@@ -24,17 +24,30 @@ class PhotoManager {
   }
 
   private var _photos: [Photo] = []
+  private let concurrentPhotoQueue = dispatch_queue_create("com.raywenderlich.GooglyPuff.photoQueue", DISPATCH_QUEUE_CONCURRENT)
   var photos: [Photo] {
     // FIXME: Not thread-safe
-    return _photos
+    var photosCopy: [Photo]!
+    // dispatch synchronously onto the concurentPhotoQueue to perform the read
+    dispatch_sync(concurrentPhotoQueue, { () -> Void in
+      // store a copy of the photo array in photosCopy and return it
+      photosCopy = self._photos
+    })
+    return photosCopy
   }
 
   func addPhoto(photo: Photo) {
     // FIXME: Not thread-safe
-    _photos.append(photo)
-    dispatch_async(dispatch_get_main_queue()) {
-      self.postContentAddedNotification()
-    }
+    // add the write operation using your custom queue. When the critical section executes at a later time this will be the only item in your queue to execute.
+    dispatch_barrier_async(concurrentPhotoQueue, { () -> Void in
+      // actual code which adds the object to the array. Since it's a barrier closure. this closure will never run simultaneously with any other closure in concurrentPhotoQueue.
+      self._photos.append(photo)
+      dispatch_async(dispatch_get_main_queue()) {
+        self.postContentAddedNotification()
+      }
+
+    })
+    
   }
 
   func downloadPhotosWithCompletion(completion: BatchPhotoDownloadingCompletionClosure?) {
