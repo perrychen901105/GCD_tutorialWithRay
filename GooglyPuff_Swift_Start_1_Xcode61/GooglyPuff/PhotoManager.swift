@@ -51,22 +51,30 @@ class PhotoManager {
   }
 
   func downloadPhotosWithCompletion(completion: BatchPhotoDownloadingCompletionClosure?) {
-    var storedError: NSError!
-    var downloadGroup = dispatch_group_create()
-    
-    for address in [OverlyAttachedGirlfriendURLString, SuccessKidURLString, LotsOfFacesURLString] {
-      let url = NSURL(string: address)
-      dispatch_group_enter(downloadGroup) // 3
-      let photo = DownloadPhoto(url: url!) {
-        image, error in
-        if let error = error {
-          storedError = error
+    // since using the synchronous dispatch_group_wait which blocks the current thread, you use dispatch_async to place the entire method into a background queue to ensure you don't block the main thread
+    dispatch_async(GlobalUserInitiatedQueue) { // 1
+      var storedError: NSError!
+      var downloadGroup = dispatch_group_create() // 2
+      
+      for address in [OverlyAttachedGirlfriendURLString, SuccessKidURLString, LotsOfFacesURLString] {
+        let url = NSURL(string: address)
+        dispatch_group_enter(downloadGroup) // 3
+        let photo = DownloadPhoto(url: url!) {
+          image, error in
+          if let error = error {
+            storedError = error
+          }
+          dispatch_group_leave(downloadGroup) // 4
         }
-        dispatch_group_leave(downloadGroup) // 4
+        PhotoManager.sharedManager.addPhoto(photo)
       }
-      PhotoManager.sharedManager.addPhoto(photo)
+      dispatch_group_wait(downloadGroup, DISPATCH_TIME_FOREVER) // 5
+      dispatch_async(GlobalMainQueue, { () -> Void in
+        if let completion = completion { // 7
+          completion(error: storedError)
+        }
+      })
     }
-    dispatch_group_wait(downloadGroup, DISPATCH_TIME_FOREVER) // 5
   }
 
   private func postContentAddedNotification() {
