@@ -51,23 +51,22 @@ class PhotoManager {
   }
 
   func downloadPhotosWithCompletion(completion: BatchPhotoDownloadingCompletionClosure?) {
-    var storedError: NSError?
-    for address in [OverlyAttachedGirlfriendURLString,
-                    SuccessKidURLString,
-                    LotsOfFacesURLString] {
+    var storedError: NSError!
+    var downloadGroup = dispatch_group_create()
+    
+    for address in [OverlyAttachedGirlfriendURLString, SuccessKidURLString, LotsOfFacesURLString] {
       let url = NSURL(string: address)
+      dispatch_group_enter(downloadGroup) // 3
       let photo = DownloadPhoto(url: url!) {
         image, error in
-        if error != nil {
+        if let error = error {
           storedError = error
         }
+        dispatch_group_leave(downloadGroup) // 4
       }
       PhotoManager.sharedManager.addPhoto(photo)
     }
-
-    if let completion = completion {
-      completion(error: storedError)
-    }
+    dispatch_group_wait(downloadGroup, DISPATCH_TIME_FOREVER) // 5
   }
 
   private func postContentAddedNotification() {
