@@ -51,13 +51,17 @@ class PhotoManager {
   }
 
   func downloadPhotosWithCompletion(completion: BatchPhotoDownloadingCompletionClosure?) {
+    /*
+    // dispatch_group_wait
     // since using the synchronous dispatch_group_wait which blocks the current thread, you use dispatch_async to place the entire method into a background queue to ensure you don't block the main thread
     dispatch_async(GlobalUserInitiatedQueue) { // 1
       var storedError: NSError!
+      // Create a new dispatch group which behaves somewhat like a counter of the number of uncompleted tasks.
       var downloadGroup = dispatch_group_create() // 2
       
       for address in [OverlyAttachedGirlfriendURLString, SuccessKidURLString, LotsOfFacesURLString] {
         let url = NSURL(string: address)
+        // manually notifies a group that a task has started. You must balance out the number of dispatch_group_enter calls with the number of dispatch_group_leave calls or else your app will crash.
         dispatch_group_enter(downloadGroup) // 3
         let photo = DownloadPhoto(url: url!) {
           image, error in
@@ -74,6 +78,32 @@ class PhotoManager {
           completion(error: storedError)
         }
       })
+    }
+    */
+    
+    var storedError: NSError!
+    var downloadGroup = dispatch_group_create()
+    let address = [OverlyAttachedGirlfriendURLString, SuccessKidURLString, LotsOfFacesURLString]
+    
+    dispatch_apply(UInt(address.count), GlobalUserInitiatedQueue) { (i) -> Void in
+      let index = Int(i)
+      let address = address[index]
+      let url = NSURL(string: address)
+      dispatch_group_enter(downloadGroup)
+      let photo = DownloadPhoto(url: url!) {
+        image, error in
+        if let error = error {
+          storedError = error
+        }
+        dispatch_group_leave(downloadGroup)
+      }
+      PhotoManager.sharedManager.addPhoto(photo)
+    }
+    
+    dispatch_group_notify(downloadGroup, GlobalMainQueue) { () -> Void in
+      if let completion = completion {
+        completion(error: storedError)
+      }
     }
   }
 
