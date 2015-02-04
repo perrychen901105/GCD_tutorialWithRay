@@ -51,6 +51,50 @@ class PhotoManager {
   }
 
   func downloadPhotosWithCompletion(completion: BatchPhotoDownloadingCompletionClosure?) {
+    
+    var storedError: NSError!
+    let downloadGroup = dispatch_group_create()
+    var addresses = [OverlyAttachedGirlfriendURLString, SuccessKidURLString, LotsOfFacesURLString]
+    addresses += addresses + addresses // 1
+    var blocks: [dispatch_block_t] = [] // 2
+    
+    for i in 0 ..< addresses.count {
+      dispatch_group_enter(downloadGroup)
+      // 3
+      /*
+        creates a new block object. first parameter is a flag defining various block traits. The flag used here makes the block inherit its QoS class from the queue it is dispatched to. The second parameter is the block definition in the form of a closure.
+      */
+      let block = dispatch_block_create(DISPATCH_BLOCK_INHERIT_QOS_CLASS, { () -> Void in
+        let index = Int(i)
+        let address = addresses[index]
+        let url = NSURL(string: address)
+        let photo = DownloadPhoto(url: url!) {
+          image, error in
+          if let error = error {
+            storedError = error
+          }
+          dispatch_group_leave(downloadGroup)
+        }
+        PhotoManager.sharedManager.addPhoto(photo)
+      })
+      blocks.append(block)
+      dispatch_async(GlobalMainQueue, block) // 4
+    }
+    
+    for block in blocks[3 ..< blocks.count] { // 5
+      let cancel = arc4random_uniform(2) // 6
+      if cancel == 1 {
+        dispatch_block_cancel(block) // 7
+        dispatch_group_leave(downloadGroup) // 8
+      }
+    }
+    
+    dispatch_group_notify(downloadGroup, GlobalMainQueue) { () -> Void in
+      if let completion = completion {
+        completion(error: storedError)
+      }
+    }
+    
     /*
     // dispatch_group_wait
     // since using the synchronous dispatch_group_wait which blocks the current thread, you use dispatch_async to place the entire method into a background queue to ensure you don't block the main thread
