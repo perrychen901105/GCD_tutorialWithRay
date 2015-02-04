@@ -80,11 +80,13 @@ class PhotoManager {
       })
     }
     */
-    
+    /* 
+    // dispatch_apply
     var storedError: NSError!
     var downloadGroup = dispatch_group_create()
     let address = [OverlyAttachedGirlfriendURLString, SuccessKidURLString, LotsOfFacesURLString]
     
+    // returns only when all of the work is done.
     dispatch_apply(UInt(address.count), GlobalUserInitiatedQueue) { (i) -> Void in
       let index = Int(i)
       let address = address[index]
@@ -105,6 +107,7 @@ class PhotoManager {
         completion(error: storedError)
       }
     }
+    */
   }
 
   private func postContentAddedNotification() {
