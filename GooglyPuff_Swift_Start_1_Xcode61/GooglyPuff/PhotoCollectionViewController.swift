@@ -19,10 +19,45 @@ class PhotoCollectionViewController: UICollectionViewController
   private var contentUpdateObserver: NSObjectProtocol!
   private var addedContentObserver: NSObjectProtocol!
 
+  #if DEBUG
+  
+  private var signalSource: dispatch_source_t!
+  private var signalOnceToken = dispatch_once_t()
+  
+  #endif
+  
   // MARK: - Lifecycle
 
   override func viewDidLoad() {
     super.viewDidLoad()
+    
+    #if DEBUG // 1
+      
+      // 2
+      // Use dispatch_once to perform the dispatch source's one-time setup
+      
+      
+      dispatch_once(&signalOnceToken, { () -> Void in
+        let queue = dispatch_get_main_queue()
+        // 3
+        // instantiate the signalSource variable. Indecate that interested in signal monitoring and provide the SIGSTOP signal as the second parameter. Additionally, you use the main queue for handling received events
+        self.signalSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_SIGNAL, UInt(SIGSTOP), 0, queue)
+        
+        // 4
+        // make sure have a valid dispatch source object before working on it
+        if let source = self.signalSource {
+          // registers an event closure that is invoked when you receive the signal you're monitoring for.
+            dispatch_source_set_event_handler(source, { () -> Void in
+              NSLog("Hi, I am: \(self.description)")
+            })
+          // By Default. all sources start in the suspended state. You must tell the source object to resume when you want to start monitoring for the events.
+          dispatch_resume(source)
+        }
+      })
+      
+      
+    #endif
+    
     library = ALAssetsLibrary()
 
     // Background image setup
